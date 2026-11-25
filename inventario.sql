@@ -119,3 +119,8 @@ VALUES
 	('OFF-202', 'Escritorio Ajustable de Pie', 'Oficina', 3, 210.00, 350.00, 2),
 	('ACC-301', 'Mousepad XL Antideslizante', 'Periféricos', 2, 6.50, 15.00, 3),
 	('ACC-302', 'Cable HDMI 2.1 2m', 'Cables', 5, 3.00, 8.00, 3)
+
+INSERT INTO almacen (nombreAlmacen, ubicacionAlmacen)
+VALUES
+	('Almacén Central', 'Cartago, Costa Rica'),
+	('Bodega Norte', 'San José, Costa Rica')
