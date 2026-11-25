@@ -1,3 +1,11 @@
+CREATE TABLE proveedor (
+    idProveedor SERIAL PRIMARY KEY,
+    nombreProveedor VARCHAR(70) NOT NULL,
+    contactoProveedor VARCHAR(70) NOT NULL,
+    telefonoProveedor VARCHAR(20) NOT NULL,
+    paisProveedor VARCHAR(25) NOT NULL
+);
+
 CREATE TABLE categoria (
 	idCategoria SERIAL PRIMARY KEY,
 	nombreCategoria VARCHAR(30) NOT NULL
@@ -72,12 +80,5 @@ CREATE TABLE inventario (
 	        ELSE 'En stock'
 	    END
 	) STORED
-);
-
-CREATE TABLE proveedor (
-    idProveedor SERIAL PRIMARY KEY,
-    nombreProveedor VARCHAR(70) NOT NULL,
-    contactoProveedor VARCHAR(70) NOT NULL,
-    telefonoProveedor VARCHAR(20) NOT NULL,
-    paisProveedor VARCHAR(25) NOT NULL
+	UNIQUE (idProducto, idAlmacen)
 );
