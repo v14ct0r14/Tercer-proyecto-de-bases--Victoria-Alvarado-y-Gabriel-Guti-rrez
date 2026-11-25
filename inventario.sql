@@ -31,7 +31,6 @@ CREATE TABLE producto (
 	idProducto SERIAL PRIMARY KEY,
 	sku VARCHAR(7) UNIQUE NOT NULL,
 	nombreProducto VARCHAR(65) NOT NULL,
-	nombreSubcategoria VARCHAR(30) NOT NULL,
 	idSubcategoria INT NOT NULL,
 	
 	FOREIGN KEY (idSubcategoria)
@@ -128,14 +127,14 @@ VALUES
 	('mportadora Global', 'Luis Mora', '+506 8888-3333', 'Costa Rica');
 
 -- inserciones :p
-INSERT INTO producto (sku, nombreProducto, nombreSubcategoria, idSubcategoria, costoUnitario, precioVenta, idProveedor)
+INSERT INTO producto (sku, nombreProducto, idSubcategoria, costoUnitario, precioVenta, idProveedor)
 VALUES
-	('ELE-101', 'Monitor Gamer 27" 144Hz', 'Monitores', 1, 180.00, 280.00, 1),
-	('ELE-102', 'Teclado Mecánico RGB', 'Periféricos', 2, 35.00, 65.00, 1),
-	('OFF-201', 'Silla Ergonómica Ejecutiva', 'Oficina', 3, 110.00, 195.00, 2),
-	('OFF-202', 'Escritorio Ajustable de Pie', 'Oficina', 3, 210.00, 350.00, 2),
-	('ACC-301', 'Mousepad XL Antideslizante', 'Periféricos', 4, 6.50, 15.00, 3),
-	('ACC-302', 'Cable HDMI 2.1 2m', 'Cables', 5, 3.00, 8.00, 3);
+	('ELE-101', 'Monitor Gamer 27" 144Hz', 1, 180.00, 280.00, 1),
+	('ELE-102', 'Teclado Mecánico RGB', 2, 35.00, 65.00, 1),
+	('OFF-201', 'Silla Ergonómica Ejecutiva', 3, 110.00, 195.00, 2),
+	('OFF-202', 'Escritorio Ajustable de Pie', 3, 210.00, 350.00, 2),
+	('ACC-301', 'Mousepad XL Antideslizante', 4, 6.50, 15.00, 3),
+	('ACC-302', 'Cable HDMI 2.1 2m', 5, 3.00, 8.00, 3);
 
 INSERT INTO almacen (nombreAlmacen, ubicacionAlmacen)
 VALUES
