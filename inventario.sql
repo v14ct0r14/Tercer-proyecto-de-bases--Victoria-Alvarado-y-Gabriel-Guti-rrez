@@ -123,4 +123,23 @@ VALUES
 INSERT INTO almacen (nombreAlmacen, ubicacionAlmacen)
 VALUES
 	('Almacén Central', 'Cartago, Costa Rica'),
-	('Bodega Norte', 'San José, Costa Rica')
+	('Bodega Norte', 'San José, Costa Rica');
+
+INSERT INTO ubicacion (idAlmacen, pasillo, estante)
+VALUES
+	(1, 'A', '01'),
+	(1, 'A', '02'),
+	(1, 'B', '05'),
+	(1, 'B', '06'),
+	(2, 'C', '01'),
+	(2, 'C', '03');
+
+INSERT INTO inventario (idProducto, idAlmacen, cantidadStock, stockMinimo, stockOptimo, fechaUltimaEntrada, cantidadUltimaEntrada)
+VALUES
+	(1, 1, 15, 5, 10, '2026-10-15', 10),
+	(2, 1, 4, 10, 20, '2026-09-20', 20),
+	(3, 1, 8, 3, 6, '2026-10-01', 5),
+	(4, 1, 0, 2, 4, '2026-08-10', 2),
+	(5, 2, 45, 15, 30, '2026-10-18', 50),
+	(6, 2, 8, 12, 24, '2026-09-05', 30);
+	
