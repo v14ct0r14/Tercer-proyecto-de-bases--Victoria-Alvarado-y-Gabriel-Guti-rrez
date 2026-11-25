@@ -68,6 +68,9 @@ CREATE TABLE ubicacion (
 	pasillo VARCHAR(10) NOT NULL,
 	estante VARCHAR(10) NOT NULL
 );
+ALTER TABLE ubicacion
+ADD CONSTRAINT uq_ubicacion
+UNIQUE (idAlmacen, pasillo, estante);
 
 CREATE TABLE inventario (
 	idInventario SERIAL PRIMARY KEY NOT NULL UNIQUE,
