@@ -86,6 +86,10 @@ CREATE TABLE inventario (
     CHECK (stockOptimo >= stockMinimo),
     CHECK (cantidadUltimaEntrada > 0)
 );
+ALTER TABLE inventario
+ADD CONSTRAINT fk_inventario_producto
+FOREIGN KEY (idProducto)
+REFERENCES producto(idProducto);
 
 INSERT INTO categoria (nombreCategoria)
 VALUES
@@ -142,4 +146,3 @@ VALUES
 	(4, 1, 0, 2, 4, '2026-08-10', 2),
 	(5, 2, 45, 15, 30, '2026-10-18', 50),
 	(6, 2, 8, 12, 24, '2026-09-05', 30);
-	
