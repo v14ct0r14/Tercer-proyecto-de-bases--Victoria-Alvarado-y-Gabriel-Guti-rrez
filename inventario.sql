@@ -56,6 +56,9 @@ CREATE TABLE almacen (
 	nombreAlmacen VARCHAR(70) NOT NULL,
 	ubicacionAlmacen VARCHAR(40) NOT NULL
 );
+ALTER TABLE almacen
+ADD CONSTRAINT uq_nombre_almacen
+UNIQUE (nombreAlmacen);
 
 CREATE TABLE ubicacion (
 	idUbicacion SERIAL PRIMARY KEY,
@@ -121,7 +124,7 @@ INSERT INTO proveedor (
 VALUES
 	('Tech Supplies Co.', 'Carlos Ruiz', '+506 8888-1111', 'Costa Rica'),
 	('Muebles & Confort', 'Ana Gómez', '+506 8888-2222', 'Costa Rica'),
-	('mportadora Global', 'Luis Mora', '+506 8888-3333', 'Costa Rica');
+	('Importadora Global', 'Luis Mora', '+506 8888-3333', 'Costa Rica');
 
 -- inserciones :p
 INSERT INTO producto (sku, nombreProducto, idSubcategoria, costoUnitario, precioVenta, idProveedor)
