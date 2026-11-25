@@ -182,14 +182,11 @@ CREATE TABLE movimiento (
 );
 
 INSERT INTO movimiento (sku, idAlmacen, tipoMovimiento, cantidad, fechaMovimiento, idProveedor)
-SELECT
-    p.sku,
-    i.idAlmacen,
-    'Entrada',
-    i.cantidadUltimaEntrada,
-    i.fechaUltimaEntrada,
-    p.idProveedor
-FROM inventario i
-JOIN producto p
-    ON i.idProducto = p.idProducto;
+VALUES
+    ('ELE-101', 1, 'Entrada', 10, '2026-10-15', 1),
+    ('ELE-102', 1, 'Entrada', 20, '2026-09-20', 1),
+    ('OFF-201', 1, 'Entrada', 5, '2026-10-01', 2),
+    ('OFF-202', 1, 'Entrada', 2, '2026-08-10', 2),
+    ('ACC-301', 2, 'Entrada', 50, '2026-10-18', 3),
+    ('ACC-302', 2, 'Entrada', 30, '2026-09-05', 3);
 
