@@ -24,7 +24,7 @@ CREATE TABLE producto (
 	REFERENCES subcategoria (idSubcategoria),
 	
 	costoUnitario NUMERIC(12,2) NOT NULL,
-	precioVenta  NUMERIC(12,2) NOT NULL
+	precioVenta  NUMERIC(12,2) NOT NULL,
 	idProveedor INT NOT NULL,
 
 	FOREIGN KEY (idProveedor)
