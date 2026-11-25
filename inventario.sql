@@ -79,10 +79,16 @@ CREATE TABLE inventario (
 	        WHEN cantidadStock <= stockMinimo THEN 'Reordenar'
 	        ELSE 'En stock'
 	    END
-	) STORED
-	UNIQUE (idProducto, idAlmacen)
+	) STORED,
+	UNIQUE (idProducto, idAlmacen),
 	CHECK (cantidadStock >= 0),
     CHECK (stockMinimo >= 0),
     CHECK (stockOptimo >= stockMinimo),
     CHECK (cantidadUltimaEntrada > 0)
 );
+
+INSERT INTO categoria (nombreCategoria)
+VALUES
+    ('Electrónica'),
+    ('Muebles'),
+    ('Accesorios');
