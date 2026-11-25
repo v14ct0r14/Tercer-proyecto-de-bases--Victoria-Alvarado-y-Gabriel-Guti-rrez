@@ -214,3 +214,11 @@ TO inventory_manager;
 GRANT SELECT
 ON movimiento
 TO inventory_manager;
+
+GRANT USAGE ON SCHEMA public
+TO auditor;
+
+GRANT SELECT
+ON producto, categoria, subcategoria,
+   almacen, ubicacion, movimiento
+TO auditor;
