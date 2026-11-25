@@ -85,8 +85,6 @@ CREATE TABLE inventario (
 	cantidadStock int NOT NULL,
 	stockMinimo INT NOT NULL,
 	stockOptimo INT NOT NULL,
-	fechaUltimaEntrada DATE NOT NULL,
-	cantidadUltimaEntrada INT NOT NULL,
 	estadoStock VARCHAR(20)
 	GENERATED ALWAYS AS (
 	    CASE
@@ -98,8 +96,7 @@ CREATE TABLE inventario (
 	UNIQUE (idProducto, idAlmacen),
 	CHECK (cantidadStock >= 0),
     CHECK (stockMinimo >= 0),
-    CHECK (stockOptimo >= stockMinimo),
-    CHECK (cantidadUltimaEntrada > 0)
+    CHECK (stockOptimo >= stockMinimo)
 );
 
 INSERT INTO categoria (nombreCategoria)
@@ -194,3 +191,4 @@ SELECT
 FROM inventario i
 JOIN producto p
     ON i.idProducto = p.idProducto;
+
