@@ -103,3 +103,11 @@ VALUES
     (2, 'Oficina'),
     (3, 'Periféricos'),
     (3, 'Cables');	
+
+INSERT INTO proveedor (
+	nombreProveedor, contactoProveedor, telefonoProveedor, paisProveedor)
+VALUES
+	('Tech Supplies Co.', 'Carlos Ruiz', '+506 8888-1111', 'Costa Rica'),
+	('Muebles & Confort', 'Ana Gómez', '+506 8888-2222', 'Costa Rica'),
+	('mportadora Global', 'Luis Mora', '+506 8888-3333', 'Costa Rica');
+	
