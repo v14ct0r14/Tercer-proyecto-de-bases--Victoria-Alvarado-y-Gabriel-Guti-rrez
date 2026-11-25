@@ -23,6 +23,9 @@ CREATE TABLE subcategoria (
 
 	nombreSubcategoria VARCHAR(30) NOT NULL
 );
+ALTER TABLE subcategoria
+ADD CONSTRAINT uq_subcategoria
+UNIQUE (idCategoria, nombreSubcategoria);
 
 CREATE TABLE producto (
 	idProducto SERIAL PRIMARY KEY,
