@@ -198,3 +198,19 @@ VALUES
 CREATE ROLE db_admin NOLOGIN;
 CREATE ROLE inventory_manager NOLOGIN;
 CREATE ROLE auditor NOLOGIN;
+
+GRANT USAGE ON SCHEMA public
+TO inventory_manager;
+
+GRANT SELECT, INSERT, UPDATE
+ON producto, inventario
+TO inventory_manager;
+
+GRANT SELECT
+ON categoria, subcategoria,
+   proveedor, almacen, ubicacion
+TO inventory_manager;
+
+GRANT SELECT
+ON movimiento
+TO inventory_manager;
