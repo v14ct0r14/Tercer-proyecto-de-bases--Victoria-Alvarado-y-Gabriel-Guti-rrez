@@ -81,4 +81,8 @@ CREATE TABLE inventario (
 	    END
 	) STORED
 	UNIQUE (idProducto, idAlmacen)
+	CHECK (cantidadStock >= 0),
+    CHECK (stockMinimo >= 0),
+    CHECK (stockOptimo >= stockMinimo),
+    CHECK (cantidadUltimaEntrada > 0)
 );
