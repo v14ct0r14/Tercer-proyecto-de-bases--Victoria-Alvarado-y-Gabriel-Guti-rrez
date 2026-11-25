@@ -44,6 +44,13 @@ CREATE TABLE producto (
 	FOREIGN KEY (idProveedor)
 	REFERENCES proveedor(idProveedor)
 );
+ALTER TABLE producto
+ADD CONSTRAINT chk_costo
+CHECK (costoUnitario >= 0);
+
+ALTER TABLE producto
+ADD CONSTRAINT chk_precio
+CHECK (precioVenta >= 0);
 
 CREATE TABLE almacen (
 	idAlmacen SERIAL PRIMARY KEY,
