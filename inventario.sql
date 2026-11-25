@@ -192,4 +192,9 @@ VALUES
     ('OFF-202', 1, 'Entrada', 2, '2026-08-10', 2),
     ('ACC-301', 2, 'Entrada', 50, '2026-10-18', 3),
     ('ACC-302', 2, 'Entrada', 30, '2026-09-05', 3);
+	
+-- control de acceso
 
+CREATE ROLE db_admin NOLOGIN;
+CREATE ROLE inventory_manager NOLOGIN;
+CREATE ROLE auditor NOLOGIN;
