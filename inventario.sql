@@ -92,3 +92,14 @@ VALUES
     ('Electrónica'),
     ('Muebles'),
     ('Accesorios');
+
+INSERT INTO subcategoria (
+    idCategoria,
+    nombreSubcategoria
+)
+VALUES
+    (1, 'Monitores'),
+    (1, 'Periféricos'),
+    (2, 'Oficina'),
+    (3, 'Periféricos'),
+    (3, 'Cables');	
