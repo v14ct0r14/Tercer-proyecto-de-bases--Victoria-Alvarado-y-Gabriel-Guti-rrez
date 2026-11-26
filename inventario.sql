@@ -219,6 +219,7 @@ GRANT USAGE, SELECT
 ON ALL SEQUENCES IN SCHEMA public
 TO inventory_manager;
 
+
 GRANT USAGE ON SCHEMA public
 TO auditor;
 
@@ -238,3 +239,4 @@ TO db_admin;
 GRANT USAGE, CREATE
 ON SCHEMA public
 TO db_admin;
+
