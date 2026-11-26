@@ -227,3 +227,14 @@ ON producto, categoria, subcategoria,
    almacen, ubicacion, movimiento
 TO auditor;
 
+GRANT ALL PRIVILEGES
+ON ALL TABLES IN SCHEMA public
+TO db_admin;
+
+GRANT ALL PRIVILEGES
+ON ALL SEQUENCES IN SCHEMA public
+TO db_admin;
+
+GRANT USAGE, CREATE
+ON SCHEMA public
+TO db_admin;
