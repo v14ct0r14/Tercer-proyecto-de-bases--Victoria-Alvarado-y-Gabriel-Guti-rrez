@@ -240,3 +240,10 @@ GRANT USAGE, CREATE
 ON SCHEMA public
 TO db_admin;
 
+-- seguridad a nivel de filas
+-- Gestores de cada almacén
+CREATE ROLE gestorCentral NOLOGIN;
+CREATE ROLE gestorNorte NOLOGIN;
+
+GRANT inventory_manager TO gestorCentral;
+GRANT inventory_manager TO gestorNorte;
