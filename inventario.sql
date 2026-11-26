@@ -215,6 +215,10 @@ GRANT SELECT
 ON movimiento
 TO inventory_manager;
 
+GRANT USAGE, SELECT
+ON ALL SEQUENCES IN SCHEMA public
+TO inventory_manager;
+
 GRANT USAGE ON SCHEMA public
 TO auditor;
 
@@ -222,3 +226,4 @@ GRANT SELECT
 ON producto, categoria, subcategoria,
    almacen, ubicacion, movimiento
 TO auditor;
+
