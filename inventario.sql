@@ -318,8 +318,6 @@ WITH CHECK (
     )
 );
 
-GRANT SELECT ON movimiento TO inventory_manager;
-
 --
 ALTER TABLE movimiento
 ENABLE ROW LEVEL SECURITY;
