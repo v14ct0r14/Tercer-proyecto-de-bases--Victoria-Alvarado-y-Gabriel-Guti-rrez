@@ -247,3 +247,93 @@ CREATE ROLE gestorNorte NOLOGIN;
 
 GRANT inventory_manager TO gestorCentral;
 GRANT inventory_manager TO gestorNorte;
+
+CREATE TABLE usuarioAlmacen (
+    idAsignacion SERIAL PRIMARY KEY,
+    nombreUsuario VARCHAR(65) NOT NULL,
+    idAlmacen INT NOT NULL,
+
+    FOREIGN KEY (idAlmacen)
+    REFERENCES almacen(idAlmacen),
+
+    UNIQUE (nombreUsuario, idAlmacen)
+);
+
+INSERT INTO usuarioAlmacen (nombreUsuario, idAlmacen)
+VALUES
+    ('gestorcentral', 1),
+    ('gestornorte', 2);
+
+GRANT SELECT
+ON usuarioAlmacen
+TO inventory_manager;
+
+ALTER TABLE inventario
+ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY rls_inventario_select
+ON inventario
+FOR SELECT
+TO inventory_manager
+USING (
+    EXISTS (
+        SELECT 1
+        FROM usuarioAlmacen ua
+        WHERE ua.nombreUsuario = CURRENT_USER
+          AND ua.idAlmacen = inventario.idAlmacen
+    )
+);
+
+CREATE POLICY rls_inventario_update
+ON inventario
+FOR UPDATE
+TO inventory_manager
+USING (
+    EXISTS (
+        SELECT 1
+        FROM usuarioAlmacen ua
+        WHERE ua.nombreUsuario = CURRENT_USER
+          AND ua.idAlmacen = inventario.idAlmacen
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1
+        FROM usuarioAlmacen ua
+        WHERE ua.nombreUsuario = CURRENT_USER
+          AND ua.idAlmacen = inventario.idAlmacen
+    )
+);
+
+CREATE POLICY rls_inventario_insert
+ON inventario
+FOR INSERT
+TO inventory_manager
+WITH CHECK (
+    EXISTS (
+        SELECT 1
+        FROM usuarioAlmacen ua
+        WHERE ua.nombreUsuario = CURRENT_USER
+          AND ua.idAlmacen = inventario.idAlmacen
+    )
+);
+
+GRANT SELECT ON movimiento TO inventory_manager;
+
+--
+ALTER TABLE movimiento
+ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY rls_movimiento_select
+ON movimiento
+FOR SELECT
+TO inventory_manager
+USING (
+    EXISTS (
+        SELECT 1
+        FROM usuarioAlmacen ua
+        WHERE ua.nombreUsuario = CURRENT_USER
+          AND ua.idAlmacen = movimiento.idAlmacen
+    )
+);
+--
