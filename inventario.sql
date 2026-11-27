@@ -335,3 +335,9 @@ USING (
     )
 );
 --
+CREATE POLICY rls_movimiento_auditor
+ON movimiento
+FOR SELECT
+TO auditor
+USING (true);
+
