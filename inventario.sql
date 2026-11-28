@@ -535,23 +535,6 @@ FOR SELECT
 TO auditor
 USING (true);
 
-BEGIN;
-
-INSERT INTO movimiento (
-    sku,
-    idAlmacen,
-    tipoMovimiento,
-    cantidad,
-    fechaMovimiento,
-    idProveedor
-)
-VALUES
-    ('ELE-101', 1, 'Salida', 3, '2026-11-10', NULL),
-    ('ELE-102', 1, 'Salida', 2, '2026-11-12', NULL),
-    ('OFF-201', 1, 'Salida', 1, '2026-11-15', NULL),
-    ('ACC-301', 2, 'Salida', 5, '2026-11-18', NULL),
-    ('ACC-302', 2, 'Salida', 2, '2026-11-20', NULL);
-
 --
 CREATE OR REPLACE FUNCTION sp_reporte_rotacion_inventario(
     p_fechainicio DATE,
