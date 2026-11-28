@@ -1132,3 +1132,255 @@ FROM PUBLIC, inventory_manager, auditor;
 
 GRANT SELECT ON transferencia, detalleTransferencia
 TO db_admin;
+--
+
+CREATE OR REPLACE PROCEDURE sp_transferir_inventario(
+    p_almacenOrigen INT,
+    p_almacenDestino INT,
+    p_productos JSONB
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+    v_usuario TEXT;
+    v_esAdmin BOOLEAN;
+    v_idTransferencia INT;
+    v_producto RECORD;
+BEGIN
+
+    v_usuario := current_setting('role');
+
+    IF v_usuario = 'none' THEN
+        v_usuario := SESSION_USER;
+    END IF;
+
+    v_esAdmin := pg_has_role(
+        v_usuario, 'db_admin', 'member'
+    );
+
+    IF NOT (
+        v_esAdmin OR
+        pg_has_role(v_usuario, 'inventory_manager', 'member')
+    ) THEN
+        RAISE EXCEPTION
+            'Usuario % no autorizado para transferencias',
+            v_usuario;
+    END IF;
+
+    IF p_almacenOrigen IS NULL
+       OR p_almacenDestino IS NULL
+       OR p_almacenOrigen = p_almacenDestino
+    THEN
+        RAISE EXCEPTION
+            'El origen y destino deben ser diferentes y válidos';
+    END IF;
+
+    IF (
+        SELECT COUNT(*)
+        FROM almacen
+        WHERE idAlmacen IN (
+            p_almacenOrigen,
+            p_almacenDestino
+        )
+    ) <> 2 THEN
+        RAISE EXCEPTION
+            'Uno o ambos almacenes no existen';
+    END IF;
+
+    IF NOT v_esAdmin AND (
+        SELECT COUNT(*)
+        FROM usuarioAlmacen
+        WHERE nombreUsuario = v_usuario
+          AND idAlmacen IN (
+              p_almacenOrigen,
+              p_almacenDestino
+          )
+    ) <> 2 THEN
+        RAISE EXCEPTION
+            'El usuario % no tiene autorización en ambos almacenes',
+            v_usuario;
+    END IF;
+
+    IF p_productos IS NULL
+       OR jsonb_typeof(p_productos) IS DISTINCT FROM 'array'
+    THEN
+        RAISE EXCEPTION
+            'Los productos deben enviarse como un arreglo JSON';
+    END IF;
+
+    IF jsonb_array_length(p_productos) = 0 THEN
+        RAISE EXCEPTION
+            'La transferencia no puede estar vacía';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        WHERE NULLIF(BTRIM(x.sku), '') IS NULL
+           OR x.cantidad IS NULL
+           OR x.cantidad <= 0
+    ) THEN
+        RAISE EXCEPTION
+            'Existen productos o cantidades inválidas';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        GROUP BY x.sku
+        HAVING COUNT(*) > 1
+    ) THEN
+        RAISE EXCEPTION
+            'No se permiten productos repetidos';
+    END IF;
+
+    IF (
+        SELECT COUNT(*)
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        JOIN producto p
+          ON p.sku = x.sku
+        JOIN inventario i
+          ON i.idProducto = p.idProducto
+         AND i.idAlmacen = p_almacenOrigen
+    ) <> jsonb_array_length(p_productos) THEN
+        RAISE EXCEPTION
+            'Algún producto no existe en el almacén origen';
+    END IF;
+
+    FOR v_producto IN
+        SELECT
+            x.sku,
+            x.cantidad,
+            i.cantidadStock
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        JOIN producto p
+          ON p.sku = x.sku
+        JOIN inventario i
+          ON i.idProducto = p.idProducto
+         AND i.idAlmacen = p_almacenOrigen
+        ORDER BY p.idProducto
+        FOR UPDATE OF i
+    LOOP
+        IF v_producto.cantidadStock < v_producto.cantidad THEN
+            RAISE EXCEPTION
+                'Stock insuficiente para %. Disponible: %, solicitado: %',
+                v_producto.sku,
+                v_producto.cantidadStock,
+                v_producto.cantidad;
+        END IF;
+    END LOOP;
+
+    INSERT INTO transferencia (
+        idAlmacenOriginal,
+        idAlmacenDestino,
+        usuarioEncargado
+    )
+    VALUES (
+        p_almacenOrigen,
+        p_almacenDestino,
+        v_usuario
+    )
+    RETURNING idTransferencia
+    INTO v_idTransferencia;
+
+    FOR v_producto IN
+        SELECT
+            x.sku,
+            x.cantidad,
+            p.idProducto
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        JOIN producto p
+          ON p.sku = x.sku
+        ORDER BY p.idProducto
+    LOOP
+
+        INSERT INTO detalleTransferencia (
+            idTransferencia,
+            idProducto,
+            cantidadT
+        )
+        VALUES (
+            v_idTransferencia,
+            v_producto.idProducto,
+            v_producto.cantidad
+        );
+
+        UPDATE inventario
+        SET cantidadStock = cantidadStock - v_producto.cantidad
+        WHERE idProducto = v_producto.idProducto
+          AND idAlmacen = p_almacenOrigen;
+
+        INSERT INTO inventario (
+            idProducto,
+            idAlmacen,
+            cantidadStock,
+            stockMinimo,
+            stockOptimo,
+            fechaUltimaEntrada,
+            cantidadUltimaEntrada
+        )
+        VALUES (
+            v_producto.idProducto,
+            p_almacenDestino,
+            v_producto.cantidad,
+            0,
+            0,
+            CURRENT_DATE,
+            v_producto.cantidad
+        )
+        ON CONFLICT (idProducto, idAlmacen)
+        DO UPDATE SET
+            cantidadStock =
+                inventario.cantidadStock + EXCLUDED.cantidadStock,
+            fechaUltimaEntrada = CURRENT_DATE,
+            cantidadUltimaEntrada = EXCLUDED.cantidadUltimaEntrada;
+
+        INSERT INTO movimiento (
+            sku,
+            idAlmacen,
+            tipoMovimiento,
+            cantidad
+        )
+        VALUES (
+            v_producto.sku,
+            p_almacenOrigen,
+            'Salida',
+            v_producto.cantidad
+        );
+
+        INSERT INTO movimiento (
+            sku,
+            idAlmacen,
+            tipoMovimiento,
+            cantidad
+        )
+        VALUES (
+            v_producto.sku,
+            p_almacenDestino,
+            'Entrada',
+            v_producto.cantidad
+        );
+
+    END LOOP;
+
+    RAISE NOTICE
+        'Transferencia % procesada correctamente',
+        v_idTransferencia;
+
+END;
+$$;
+
+REVOKE ALL ON PROCEDURE sp_transferir_inventario(
+    INT, INT, JSONB
+) FROM PUBLIC;
+
+GRANT EXECUTE ON PROCEDURE sp_transferir_inventario(
+    INT, INT, JSONB
+) TO inventory_manager, db_admin;
