@@ -506,3 +506,13 @@ BEGIN
 
 END;
 $$;
+
+REVOKE ALL
+ON FUNCTION
+sp_reporte_valoracion_reabastecimiento(INT, NUMERIC)
+FROM PUBLIC;
+
+GRANT EXECUTE
+ON FUNCTION
+sp_reporte_valoracion_reabastecimiento(INT, NUMERIC)
+TO db_admin, inventory_manager;
