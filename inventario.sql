@@ -341,3 +341,168 @@ FOR SELECT
 TO auditor
 USING (true);
 
+--Primer reporte
+CREATE OR REPLACE FUNCTION
+sp_reporte_valoracion_reabastecimiento(
+    p_almacenid INT,
+    p_margenalerta NUMERIC(5,2) DEFAULT 0
+)
+RETURNS TABLE (
+    almacen TEXT,
+    sku TEXT,
+    producto TEXT,
+    categoria TEXT,
+    stock_actual INT,
+    stock_minimo INT,
+    stock_optimo INT,
+    unidades_pedir INT,
+    costo_unitario NUMERIC,
+    valor_inventario NUMERIC,
+    costo_reposicion NUMERIC,
+    valor_total_almacen NUMERIC,
+    presupuesto_total_almacen NUMERIC,
+    estado TEXT
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+BEGIN
+
+    IF p_margenalerta IS NULL
+       OR p_margenalerta < 0
+       OR p_margenalerta > 100 THEN
+
+        RAISE EXCEPTION
+        'El margen de alerta debe estar entre 0 y 100';
+    END IF;
+
+    IF p_almacenid IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1
+           FROM public.almacen a
+           WHERE a.idalmacen = p_almacenid
+       ) THEN
+
+        RAISE EXCEPTION
+        'El almacén % no existe', p_almacenid;
+    END IF;
+
+    CREATE TEMP TABLE IF NOT EXISTS tmp_valoracion (
+        almacen TEXT,
+        sku TEXT,
+        producto TEXT,
+        categoria TEXT,
+        stock_actual INT,
+        stock_minimo INT,
+        stock_optimo INT,
+        unidades_pedir INT,
+        costo_unitario NUMERIC,
+        valor_inventario NUMERIC,
+        costo_reposicion NUMERIC,
+        estado TEXT,
+        prioridad INT
+    ) ON COMMIT DROP;
+
+    TRUNCATE TABLE pg_temp.tmp_valoracion;
+
+    INSERT INTO pg_temp.tmp_valoracion
+    SELECT
+        a.nombrealmacen::TEXT,
+        p.sku::TEXT,
+        p.nombreproducto::TEXT,
+        c.nombrecategoria::TEXT,
+
+        i.cantidadstock,
+        i.stockminimo,
+        i.stockoptimo,
+
+        GREATEST(
+            i.stockoptimo - i.cantidadstock, 0
+        ),
+
+        p.costounitario,
+
+        i.cantidadstock * p.costounitario,
+
+        GREATEST(
+            i.stockoptimo - i.cantidadstock, 0
+        ) * p.costounitario,
+
+        CASE
+            WHEN i.cantidadstock = 0
+                THEN 'Agotado'
+
+            WHEN i.cantidadstock <= i.stockminimo
+                THEN 'Crítico'
+
+            WHEN i.cantidadstock <=
+                 i.stockminimo * (1 + p_margenalerta / 100)
+                THEN 'En alerta'
+
+            WHEN i.cantidadstock < i.stockoptimo
+                THEN 'Reabastecer'
+
+            ELSE 'Óptimo'
+        END,
+
+        CASE
+            WHEN i.cantidadstock = 0 THEN 1
+            WHEN i.cantidadstock <= i.stockminimo THEN 2
+            WHEN i.cantidadstock <=
+                 i.stockminimo * (1 + p_margenalerta / 100)
+                THEN 3
+            WHEN i.cantidadstock < i.stockoptimo THEN 4
+            ELSE 5
+        END
+
+    FROM public.inventario i
+
+    JOIN public.producto p
+        ON i.idproducto = p.idproducto
+
+    JOIN public.subcategoria s
+        ON p.idsubcategoria = s.idsubcategoria
+
+    JOIN public.categoria c
+        ON s.idcategoria = c.idcategoria
+
+    JOIN public.almacen a
+        ON i.idalmacen = a.idalmacen
+
+    WHERE p_almacenid IS NULL
+       OR i.idalmacen = p_almacenid;
+
+    RETURN QUERY
+
+    SELECT
+        t.almacen,
+        t.sku,
+        t.producto,
+        t.categoria,
+        t.stock_actual,
+        t.stock_minimo,
+        t.stock_optimo,
+        t.unidades_pedir,
+        t.costo_unitario,
+        t.valor_inventario,
+        t.costo_reposicion,
+
+        SUM(t.valor_inventario) OVER (
+            PARTITION BY t.almacen
+        ),
+
+        SUM(t.costo_reposicion) OVER (
+            PARTITION BY t.almacen
+        ),
+
+        t.estado
+
+    FROM pg_temp.tmp_valoracion t
+
+    ORDER BY
+        t.prioridad,
+        t.almacen,
+        t.sku;
+
+END;
+$$;
