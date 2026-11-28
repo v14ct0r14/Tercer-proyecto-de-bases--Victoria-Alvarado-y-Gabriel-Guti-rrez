@@ -1317,30 +1317,24 @@ BEGIN
         WHERE idProducto = v_producto.idProducto
           AND idAlmacen = p_almacenOrigen;
 
-        INSERT INTO inventario (
-            idProducto,
-            idAlmacen,
-            cantidadStock,
-            stockMinimo,
-            stockOptimo,
-            fechaUltimaEntrada,
-            cantidadUltimaEntrada
-        )
-        VALUES (
-            v_producto.idProducto,
-            p_almacenDestino,
-            v_producto.cantidad,
-            0,
-            0,
-            CURRENT_DATE,
-            v_producto.cantidad
-        )
-        ON CONFLICT (idProducto, idAlmacen)
-        DO UPDATE SET
-            cantidadStock =
-                inventario.cantidadStock + EXCLUDED.cantidadStock,
-            fechaUltimaEntrada = CURRENT_DATE,
-            cantidadUltimaEntrada = EXCLUDED.cantidadUltimaEntrada;
+		INSERT INTO inventario (
+		    idProducto,
+		    idAlmacen,
+		    cantidadStock,
+		    stockMinimo,
+		    stockOptimo
+		)
+		VALUES (
+		    v_producto.idProducto,
+		    p_almacenDestino,
+		    v_producto.cantidad,
+		    0,
+		    0
+		)
+		ON CONFLICT (idProducto, idAlmacen)
+		DO UPDATE SET
+		    cantidadStock =
+		        inventario.cantidadStock + EXCLUDED.cantidadStock;
 
         INSERT INTO movimiento (
             sku,
@@ -1384,3 +1378,12 @@ REVOKE ALL ON PROCEDURE sp_transferir_inventario(
 GRANT EXECUTE ON PROCEDURE sp_transferir_inventario(
     INT, INT, JSONB
 ) TO inventory_manager, db_admin;
+--------
+
+GRANT SELECT, INSERT, UPDATE
+ON producto
+TO inventory_manager;
+GRANT SELECT
+ON inventario
+TO inventory_manager;
+----
