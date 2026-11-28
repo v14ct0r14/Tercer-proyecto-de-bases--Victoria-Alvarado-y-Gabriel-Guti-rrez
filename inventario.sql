@@ -1126,3 +1126,9 @@ ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE detalleTransferencia
 ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON transferencia, detalleTransferencia
+FROM PUBLIC, inventory_manager, auditor;
+
+GRANT SELECT ON transferencia, detalleTransferencia
+TO db_admin;
