@@ -849,3 +849,6 @@ CREATE TABLE detalleTransferencia (
 
     UNIQUE (idTransferencia, idProducto)
 );
+
+ALTER TABLE venta ENABLE ROW LEVEL SECURITY;
+ALTER TABLE detalleventa ENABLE ROW LEVEL SECURITY;
