@@ -780,3 +780,72 @@ VALUES
     ('ACC-301', 2, 'Salida', 5, '2026-11-18', NULL),
     ('ACC-302', 2, 'Salida', 2, '2026-11-20', NULL);
 --
+
+SELECT
+    sku,
+    stock_promedio,
+    total_salidas_unidades,
+    promedio_diario_salidas,
+    dias_inventario_restante,
+    indice_rotacion
+FROM sp_reporte_rotacion_inventario(
+    '2026-11-01'::DATE,
+    '2026-11-27'::DATE,
+    1
+)
+WHERE sku = 'ELE-101';
+
+--Transacciones :p
+CREATE TABLE venta (
+    idVenta SERIAL PRIMARY KEY,
+    idAlmacen INT NOT NULL,
+    fechaVenta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    usuarioResponsable VARCHAR(65) NOT NULL,
+    totalVenta NUMERIC(12,2) NOT NULL CHECK (totalVenta >= 0),
+
+    FOREIGN KEY (idAlmacen)
+    REFERENCES almacen(idAlmacen)
+);
+CREATE TABLE detalleVenta (
+    idDetalleV SERIAL PRIMARY KEY,
+    idVenta INT NOT NULL,
+    idProducto INT NOT NULL,
+    cantidad INT NOT NULL CHECK (cantidad > 0),
+    precioUnidad NUMERIC(12,2) NOT NULL CHECK (precioUnidad >= 0),
+    subtotal NUMERIC(12,2)
+        GENERATED ALWAYS AS (cantidad * precioUnidad) STORED,
+
+    FOREIGN KEY (idVenta)
+    REFERENCES venta(idVenta),
+    FOREIGN KEY (idProducto)
+    REFERENCES producto(idProducto),
+
+    UNIQUE (idVenta, idProducto)
+);
+CREATE TABLE transferencia (
+    idTransferencia SERIAL PRIMARY KEY,
+    idAlmacenOriginal INT NOT NULL,
+    idAlmacenDestino INT NOT NULL,
+    fechaTransferencia TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    usuarioEncargado VARCHAR(65) NOT NULL,
+
+    FOREIGN KEY (idAlmacenOriginal)
+    REFERENCES almacen(idAlmacen),
+    FOREIGN KEY (idAlmacenDestino)
+    REFERENCES almacen(idAlmacen),
+
+    CHECK (idAlmacenOriginal <> idAlmacenDestino)
+);
+CREATE TABLE detalleTransferencia (
+    idDetalleT SERIAL PRIMARY KEY,
+    idTransferencia INT NOT NULL,
+    idProducto INT NOT NULL,
+    cantidadT INT NOT NULL CHECK (cantidadT > 0),
+
+    FOREIGN KEY (idTransferencia)
+    REFERENCES transferencia(idTransferencia),
+    FOREIGN KEY (idProducto)
+    REFERENCES producto(idProducto),
+
+    UNIQUE (idTransferencia, idProducto)
+);
