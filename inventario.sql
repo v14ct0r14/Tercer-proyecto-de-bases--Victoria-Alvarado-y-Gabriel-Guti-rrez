@@ -907,3 +907,12 @@ WITH CHECK (
           AND ua.nombreUsuario = CURRENT_USER
     )
 );
+
+REVOKE ALL ON venta, detalleventa
+FROM PUBLIC, inventory_manager, auditor;
+
+GRANT SELECT ON venta, detalleventa
+TO inventory_manager;
+
+GRANT SELECT ON venta, detalleventa
+TO db_admin;
