@@ -852,3 +852,29 @@ CREATE TABLE detalleTransferencia (
 
 ALTER TABLE venta ENABLE ROW LEVEL SECURITY;
 ALTER TABLE detalleventa ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY rls_venta_select
+ON venta
+FOR SELECT
+TO inventory_manager
+USING (
+    EXISTS (
+        SELECT 1
+        FROM usuarioAlmacen ua
+        WHERE ua.nombreUsuario = CURRENT_USER
+          AND ua.idAlmacen = venta.idAlmacen
+    )
+);
+
+CREATE POLICY rls_venta_insert
+ON venta
+FOR INSERT
+TO inventory_manager
+WITH CHECK (
+    EXISTS (
+        SELECT 1
+        FROM usuarioAlmacen ua
+        WHERE ua.nombreUsuario = CURRENT_USER
+          AND ua.idAlmacen = venta.idAlmacen
+    )
+);
