@@ -778,4 +778,9 @@ ON movimiento
 FOR SELECT
 TO db_admin
 USING (true);
+
+
+REVOKE ALL
+ON FUNCTION sp_reporte_rotacion_inventario(DATE, DATE, INT)
+FROM PUBLIC;
 --
