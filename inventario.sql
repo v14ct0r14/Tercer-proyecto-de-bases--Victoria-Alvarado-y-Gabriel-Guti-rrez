@@ -523,3 +523,14 @@ FOR ALL
 TO db_admin
 USING (true)
 WITH CHECK (true);
+
+--Segundo reporte
+GRANT SELECT
+ON inventario
+TO auditor;
+
+CREATE POLICY rls_inventario_auditor
+ON inventario
+FOR SELECT
+TO auditor
+USING (true);
