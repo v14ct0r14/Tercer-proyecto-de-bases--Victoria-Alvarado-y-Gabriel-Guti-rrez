@@ -783,4 +783,8 @@ USING (true);
 REVOKE ALL
 ON FUNCTION sp_reporte_rotacion_inventario(DATE, DATE, INT)
 FROM PUBLIC;
+
+GRANT EXECUTE
+ON FUNCTION sp_reporte_rotacion_inventario(DATE, DATE, INT)
+TO auditor, inventory_manager, db_admin;
 --
