@@ -516,3 +516,10 @@ GRANT EXECUTE
 ON FUNCTION
 sp_reporte_valoracion_reabastecimiento(INT, NUMERIC)
 TO db_admin, inventory_manager;
+
+CREATE POLICY rls_inventario_admin
+ON inventario
+FOR ALL
+TO db_admin
+USING (true)
+WITH CHECK (true);
