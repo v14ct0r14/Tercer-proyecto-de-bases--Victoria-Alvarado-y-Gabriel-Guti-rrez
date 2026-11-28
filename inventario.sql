@@ -773,3 +773,9 @@ BEGIN
 END;
 $$;
 
+CREATE POLICY rls_movimiento_admin
+ON movimiento
+FOR SELECT
+TO db_admin
+USING (true);
+--
