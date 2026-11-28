@@ -534,3 +534,242 @@ ON inventario
 FOR SELECT
 TO auditor
 USING (true);
+
+BEGIN;
+
+INSERT INTO movimiento (
+    sku,
+    idAlmacen,
+    tipoMovimiento,
+    cantidad,
+    fechaMovimiento,
+    idProveedor
+)
+VALUES
+    ('ELE-101', 1, 'Salida', 3, '2026-11-10', NULL),
+    ('ELE-102', 1, 'Salida', 2, '2026-11-12', NULL),
+    ('OFF-201', 1, 'Salida', 1, '2026-11-15', NULL),
+    ('ACC-301', 2, 'Salida', 5, '2026-11-18', NULL),
+    ('ACC-302', 2, 'Salida', 2, '2026-11-20', NULL);
+
+--
+CREATE OR REPLACE FUNCTION sp_reporte_rotacion_inventario(
+    p_fechainicio DATE,
+    p_fechafin DATE,
+    p_categoriaid INT DEFAULT NULL
+)
+RETURNS TABLE (
+    sku TEXT,
+    producto TEXT,
+    categoria TEXT,
+    stock_promedio NUMERIC,
+    total_salidas_unidades BIGINT,
+    valor_total_salidas_usd NUMERIC,
+    promedio_diario_salidas NUMERIC,
+    dias_inventario_restante NUMERIC,
+    indice_rotacion NUMERIC,
+    clasificacion_abc TEXT
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+DECLARE
+    v_dias INT;
+BEGIN
+
+    IF p_fechainicio IS NULL OR p_fechafin IS NULL THEN
+        RAISE EXCEPTION
+        'Las fechas de inicio y fin son obligatorias';
+    END IF;
+
+    IF p_fechainicio > p_fechafin THEN
+        RAISE EXCEPTION
+        'La fecha de inicio (%) no puede ser después a la fecha fin (%). Operación cancelada.',
+        p_fechainicio, p_fechafin;
+    END IF;
+
+    IF p_categoriaid IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1
+           FROM public.categoria c
+           WHERE c.idcategoria = p_categoriaid
+       ) THEN
+        RAISE EXCEPTION
+        'La categoría % no existe', p_categoriaid;
+    END IF;
+
+    v_dias := p_fechafin - p_fechainicio + 1;
+
+    CREATE TEMP TABLE IF NOT EXISTS tmp_rotacion (
+        codigo TEXT,
+        nombre TEXT,
+        nombre_categoria TEXT,
+        stock_actual BIGINT,
+        entradas NUMERIC,
+        salidas NUMERIC,
+        precio_venta NUMERIC
+    ) ON COMMIT DROP;
+
+    TRUNCATE TABLE pg_temp.tmp_rotacion;
+
+    INSERT INTO pg_temp.tmp_rotacion
+    SELECT
+        p.sku::TEXT,
+        p.nombreproducto::TEXT,
+        c.nombrecategoria::TEXT,
+        SUM(i.cantidadstock),
+        SUM(m.entradas),
+        SUM(m.salidas),
+        p.precioventa
+    FROM public.inventario i
+
+    JOIN public.producto p
+        ON i.idproducto = p.idproducto
+
+    JOIN public.subcategoria s
+        ON p.idsubcategoria = s.idsubcategoria
+
+    JOIN public.categoria c
+        ON s.idcategoria = c.idcategoria
+
+    CROSS JOIN LATERAL (
+        SELECT 1
+    ) AS auxiliar
+
+    LEFT JOIN LATERAL (
+        SELECT
+            COALESCE(SUM(
+                CASE WHEN mov.tipomovimiento = 'Entrada'
+                     THEN mov.cantidad ELSE 0 END
+            ), 0) AS entradas,
+
+            COALESCE(SUM(
+                CASE WHEN mov.tipomovimiento = 'Salida'
+                     THEN mov.cantidad ELSE 0 END
+            ), 0) AS salidas
+
+        FROM public.movimiento mov
+        WHERE mov.sku = p.sku
+          AND mov.idalmacen = i.idalmacen
+          AND mov.fechamovimiento >= p_fechainicio
+          AND mov.fechamovimiento < p_fechafin + INTERVAL '1 day'
+    ) m ON TRUE
+
+    WHERE p_categoriaid IS NULL
+       OR c.idcategoria = p_categoriaid
+
+    GROUP BY
+        p.sku,
+        p.nombreproducto,
+        c.nombrecategoria,
+        p.precioventa;
+
+    RETURN QUERY
+
+    WITH calculos AS (
+        SELECT
+            t.*,
+
+            GREATEST(
+                0::NUMERIC,
+                (
+                    t.stock_actual +
+                    GREATEST(
+                        0::NUMERIC,
+                        t.stock_actual - t.entradas + t.salidas
+                    )
+                ) / 2
+            ) AS promedio_estimado
+
+        FROM pg_temp.tmp_rotacion t
+    ),
+
+    metricas AS (
+        SELECT
+            c.codigo,
+            c.nombre,
+            c.nombre_categoria,
+
+            ROUND(c.promedio_estimado, 2) AS promedio,
+
+            c.salidas::BIGINT AS total_salidas,
+
+            ROUND(
+                c.salidas * c.precio_venta, 2
+            ) AS valor_salidas,
+
+            ROUND(
+                c.salidas / v_dias, 2
+            ) AS salidas_diarias,
+
+            CASE
+                WHEN c.salidas = 0 THEN NULL
+                ELSE ROUND(
+                    c.stock_actual * v_dias / c.salidas,
+                    2
+                )
+            END AS dias_restantes,
+
+            CASE
+                WHEN c.promedio_estimado = 0 THEN NULL
+                ELSE ROUND(
+                    c.salidas / c.promedio_estimado,
+                    2
+                )
+            END AS rotacion
+
+        FROM calculos c
+    ),
+
+    ordenados AS (
+        SELECT
+            m.*,
+
+            SUM(m.valor_salidas) OVER ()
+                AS valor_global,
+
+            COALESCE(
+                SUM(m.valor_salidas) OVER (
+                    ORDER BY m.valor_salidas DESC, m.codigo
+                    ROWS BETWEEN UNBOUNDED PRECEDING
+                    AND 1 PRECEDING
+                ), 0
+            ) AS valor_acumulado_anterior
+
+        FROM metricas m
+    )
+
+    SELECT
+        o.codigo,
+        o.nombre,
+        o.nombre_categoria,
+        o.promedio,
+        o.total_salidas,
+        o.valor_salidas,
+        o.salidas_diarias,
+        o.dias_restantes,
+        o.rotacion,
+
+        CASE
+            WHEN o.valor_global = 0 THEN 'Sin salidas'
+
+            WHEN o.valor_acumulado_anterior
+                 / o.valor_global < 0.80
+                 THEN 'Clase A (Alto valor)'
+
+            WHEN o.valor_acumulado_anterior
+                 / o.valor_global < 0.95
+                 THEN 'Clase B (Valor medio)'
+
+            ELSE 'Clase C (Bajo valor)'
+        END
+
+    FROM ordenados o
+
+    ORDER BY
+        o.valor_salidas DESC,
+        o.codigo;
+
+END;
+$$;
+
