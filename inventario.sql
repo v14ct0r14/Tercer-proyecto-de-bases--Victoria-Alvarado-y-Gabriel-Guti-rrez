@@ -878,3 +878,32 @@ WITH CHECK (
           AND ua.idAlmacen = venta.idAlmacen
     )
 );
+
+CREATE POLICY rls_detalleventa_select
+ON detalleventa
+FOR SELECT
+TO inventory_manager
+USING (
+    EXISTS (
+        SELECT 1
+        FROM venta v
+        JOIN usuarioAlmacen ua
+          ON ua.idAlmacen = v.idAlmacen
+        WHERE v.idVenta = detalleventa.idVenta
+          AND ua.nombreUsuario = CURRENT_USER
+    )
+);
+CREATE POLICY rls_detalleventa_insert
+ON detalleventa
+FOR INSERT
+TO inventory_manager
+WITH CHECK (
+    EXISTS (
+        SELECT 1
+        FROM venta v
+        JOIN usuarioAlmacen ua
+          ON ua.idAlmacen = v.idAlmacen
+        WHERE v.idVenta = detalleventa.idVenta
+          AND ua.nombreUsuario = CURRENT_USER
+    )
+);
