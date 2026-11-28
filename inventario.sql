@@ -916,3 +916,201 @@ TO inventory_manager;
 
 GRANT SELECT ON venta, detalleventa
 TO db_admin;
+
+
+CREATE OR REPLACE PROCEDURE sp_procesar_venta(
+    p_idAlmacen INT,
+    p_productos JSONB
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+    v_usuario TEXT;
+    v_esAdmin BOOLEAN;
+    v_idVenta INT;
+    v_total NUMERIC(12,2) := 0;
+    v_producto RECORD;
+BEGIN
+    v_usuario := current_setting('role');
+
+    IF v_usuario = 'none' THEN
+        v_usuario := SESSION_USER;
+    END IF;
+
+    v_esAdmin := pg_has_role(
+        v_usuario, 'db_admin', 'member'
+    );
+
+    IF NOT (
+        v_esAdmin OR
+        pg_has_role(v_usuario, 'inventory_manager', 'member')
+    ) THEN
+        RAISE EXCEPTION
+            'Usuario % no autorizado para realizar ventas',
+            v_usuario;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM almacen
+        WHERE idAlmacen = p_idAlmacen
+    ) THEN
+        RAISE EXCEPTION 'El almacén no existe';
+    END IF;
+
+    IF NOT v_esAdmin AND NOT EXISTS (
+        SELECT 1
+        FROM usuarioAlmacen
+        WHERE nombreUsuario = v_usuario
+          AND idAlmacen = p_idAlmacen
+    ) THEN
+        RAISE EXCEPTION
+            'El usuario % no tiene acceso al almacén %',
+            v_usuario, p_idAlmacen;
+    END IF;
+
+    IF p_productos IS NULL
+       OR jsonb_typeof(p_productos) IS DISTINCT FROM 'array'
+    THEN
+        RAISE EXCEPTION
+            'El pedido debe ser un arreglo JSON';
+    END IF;
+
+    IF jsonb_array_length(p_productos) = 0 THEN
+        RAISE EXCEPTION 'El pedido está vacío';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        WHERE NULLIF(BTRIM(x.sku), '') IS NULL
+           OR x.cantidad IS NULL
+           OR x.cantidad <= 0
+    ) THEN
+        RAISE EXCEPTION
+            'El pedido tiene productos o cantidades inválidas';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        GROUP BY x.sku
+        HAVING COUNT(*) > 1
+    ) THEN
+        RAISE EXCEPTION
+            'El pedido tiene productos repetidos';
+    END IF;
+
+    IF (
+        SELECT COUNT(*)
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        JOIN producto p ON p.sku = x.sku
+        JOIN inventario i
+          ON i.idProducto = p.idProducto
+         AND i.idAlmacen = p_idAlmacen
+    ) <> jsonb_array_length(p_productos) THEN
+        RAISE EXCEPTION
+            'Algún producto no existe en el inventario del almacén';
+    END IF;
+
+    FOR v_producto IN
+        SELECT
+            x.sku,
+            x.cantidad,
+            i.cantidadStock
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        JOIN producto p ON p.sku = x.sku
+        JOIN inventario i
+          ON i.idProducto = p.idProducto
+         AND i.idAlmacen = p_idAlmacen
+        ORDER BY p.idProducto
+        FOR UPDATE OF i
+    LOOP
+        IF v_producto.cantidadStock < v_producto.cantidad THEN
+            RAISE EXCEPTION
+                'Stock insuficiente para %. Disponible: %, solicitado: %',
+                v_producto.sku,
+                v_producto.cantidadStock,
+                v_producto.cantidad;
+        END IF;
+    END LOOP;
+
+    INSERT INTO venta (
+        idAlmacen,
+        usuarioResponsable,
+        totalVenta
+    )
+    VALUES (
+        p_idAlmacen,
+        v_usuario,
+        0
+    )
+    RETURNING idVenta INTO v_idVenta;
+
+    FOR v_producto IN
+        SELECT
+            x.sku,
+            x.cantidad,
+            p.idProducto,
+            p.precioVenta,
+            i.idInventario
+        FROM jsonb_to_recordset(p_productos)
+             AS x(sku TEXT, cantidad INT)
+        JOIN producto p ON p.sku = x.sku
+        JOIN inventario i
+          ON i.idProducto = p.idProducto
+         AND i.idAlmacen = p_idAlmacen
+        ORDER BY p.idProducto
+    LOOP
+
+        INSERT INTO detalleVenta (
+            idVenta,
+            idProducto,
+            cantidad,
+            precioUnidad
+        )
+        VALUES (
+            v_idVenta,
+            v_producto.idProducto,
+            v_producto.cantidad,
+            v_producto.precioVenta
+        );
+
+        UPDATE inventario
+        SET cantidadStock = cantidadStock - v_producto.cantidad
+        WHERE idInventario = v_producto.idInventario;
+
+        INSERT INTO movimiento (
+            sku,
+            idAlmacen,
+            tipoMovimiento,
+            cantidad
+        )
+        VALUES (
+            v_producto.sku,
+            p_idAlmacen,
+            'Salida',
+            v_producto.cantidad
+        );
+
+        v_total := v_total +
+            (v_producto.cantidad * v_producto.precioVenta);
+
+    END LOOP;
+
+    UPDATE venta
+    SET totalVenta = v_total
+    WHERE idVenta = v_idVenta;
+
+    RAISE NOTICE
+        'Venta % procesada correctamente. Total: %',
+        v_idVenta, v_total;
+
+END;
+$$;
