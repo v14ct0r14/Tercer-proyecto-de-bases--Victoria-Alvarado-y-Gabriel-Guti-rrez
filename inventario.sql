@@ -1120,3 +1120,9 @@ FROM PUBLIC;
 
 GRANT EXECUTE ON PROCEDURE sp_procesar_venta(INT, JSONB)
 TO inventory_manager, db_admin;
+
+ALTER TABLE transferencia
+ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE detalleTransferencia
+ENABLE ROW LEVEL SECURITY;
